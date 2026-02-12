@@ -16,27 +16,55 @@ import (
 	"pkg.package-operator.run/boxcutter/machinery/types"
 )
 
-// Ensure NativeRevisionMetadata implements RevisionMetadata.
-var _ types.RevisionMetadata = (*NativeRevisionMetadata)(nil)
+// NativeStrategy can be used to create a RevisionMetadata which uses an
+// native metadata.ownerReferences to store owner references.
+// It implements the same interface as AnnotationStrategy to make it easy
+// to plug-in the right implementation.
+type NativeStrategy struct {
+	scheme *runtime.Scheme
+	mapper meta.RESTMapper
+}
 
-// NativeRevisionMetadata uses .metadata.ownerReferences for ownership tracking.
-type NativeRevisionMetadata struct {
+// NewNative creates new MetadataStrategy using kubernetes native mechanisms.
+func NewNative(scheme *runtime.Scheme, mapper meta.RESTMapper) *NativeStrategy {
+	return &NativeStrategy{
+		scheme: scheme,
+		mapper: mapper,
+	}
+}
+
+// NewRevisionMetadata creates a RevisionMetadata using native ownerReferences.
+// Panics if owner has an empty UID (not persisted to cluster).
+func (s *NativeStrategy) NewRevisionMetadata(
+	owner client.Object,
+) types.RevisionMetadata {
+	return NewNativeRevisionMetadata(owner, s.scheme)
+}
+
+var (
+	// Ensure nativeRevisionMetadata implements RevisionMetadata.
+	_ types.RevisionMetadata = (*nativeRevisionMetadata)(nil)
+
+	// Ensure NativeStrategy implements MetadataStrategy.
+	_ types.MetadataStrategy = (*NativeStrategy)(nil)
+)
+
+// nativeRevisionMetadata uses .metadata.ownerReferences for ownership tracking.
+type nativeRevisionMetadata struct {
 	owner  client.Object
 	scheme *runtime.Scheme
 }
 
 // NewNativeRevisionMetadata creates a RevisionMetadata using native ownerReferences.
-// If allowCrossNamespace is false, only objects in owner.GetNamespace() are allowed.
 // Panics if owner has an empty UID (not persisted to cluster).
 func NewNativeRevisionMetadata(
-	owner client.Object,
-	scheme *runtime.Scheme,
+	owner client.Object, scheme *runtime.Scheme,
 ) types.RevisionMetadata {
 	if len(owner.GetUID()) == 0 {
 		panic("owner must be persisted to cluster, empty UID")
 	}
 
-	return &NativeRevisionMetadata{
+	return &nativeRevisionMetadata{
 		owner:  owner,
 		scheme: scheme,
 	}
@@ -45,13 +73,13 @@ func NewNativeRevisionMetadata(
 // GetReconcileOptions returns a set of options that will added to any
 // revision reconciliation options.
 // For native ownership, there are no default reconciliation options.
-func (m *NativeRevisionMetadata) GetReconcileOptions() []types.RevisionReconcileOption {
+func (m *nativeRevisionMetadata) GetReconcileOptions() []types.RevisionReconcileOption {
 	return nil
 }
 
 // GetTeardownOptions returns a set of options that will added to any
 // revision teardown options.
-func (m *NativeRevisionMetadata) GetTeardownOptions() []types.RevisionTeardownOption {
+func (m *nativeRevisionMetadata) GetTeardownOptions() []types.RevisionTeardownOption {
 	var opts []types.RevisionTeardownOption
 
 	// The revision owner is currently being deleted with "cascade=orphan". This
@@ -75,16 +103,14 @@ func (m *NativeRevisionMetadata) GetTeardownOptions() []types.RevisionTeardownOp
 }
 
 // GetOwner returns the owner object used to create this metadata.
-// This method is not part of the RevisionMetadata interface, but is currently
-// used by the reference controller.
-func (m *NativeRevisionMetadata) GetOwner() client.Object {
+func (m *nativeRevisionMetadata) GetOwner() client.Object {
 	return m.owner
 }
 
 // SetCurrent updates obj to mark this RevisionMetadata as the current (controlling) revision.
 // Returns an error if the object already has a different current revision
 // unless the WithAllowUpdate option is given.
-func (m *NativeRevisionMetadata) SetCurrent(obj metav1.Object, opts ...types.SetCurrentOption) error {
+func (m *nativeRevisionMetadata) SetCurrent(obj metav1.Object, opts ...types.SetCurrentOption) error {
 	options := &types.SetCurrentOptions{}
 	for _, opt := range opts {
 		opt(options)
@@ -105,7 +131,7 @@ func (m *NativeRevisionMetadata) SetCurrent(obj metav1.Object, opts ...types.Set
 }
 
 // IsCurrent returns true if this RevisionMetadata is the current (controlling) revision of obj.
-func (m *NativeRevisionMetadata) IsCurrent(obj metav1.Object) bool {
+func (m *nativeRevisionMetadata) IsCurrent(obj metav1.Object) bool {
 	ownerRefComp := nativeOwnerRefForCompare(m.owner, m.scheme)
 	for _, ownerRef := range obj.GetOwnerReferences() {
 		if m.referSameObject(ownerRefComp, ownerRef) &&
@@ -119,7 +145,7 @@ func (m *NativeRevisionMetadata) IsCurrent(obj metav1.Object) bool {
 }
 
 // RemoveFrom removes this RevisionMetadata from obj, whether it is the current revision or otherwise.
-func (m *NativeRevisionMetadata) RemoveFrom(obj metav1.Object) {
+func (m *nativeRevisionMetadata) RemoveFrom(obj metav1.Object) {
 	ownerRefComp := nativeOwnerRefForCompare(m.owner, m.scheme)
 	ownerRefs := obj.GetOwnerReferences()
 	foundIndex := -1
@@ -138,7 +164,7 @@ func (m *NativeRevisionMetadata) RemoveFrom(obj metav1.Object) {
 }
 
 // IsNamespaceAllowed returns true if objects may be created/managed in the namespace of obj.
-func (m *NativeRevisionMetadata) IsNamespaceAllowed(obj metav1.Object) bool {
+func (m *nativeRevisionMetadata) IsNamespaceAllowed(obj metav1.Object) bool {
 	ownerNs := m.owner.GetNamespace()
 	// If owner is cluster-scoped, all namespaces are allowed.
 	if len(ownerNs) == 0 {
@@ -151,7 +177,7 @@ func (m *NativeRevisionMetadata) IsNamespaceAllowed(obj metav1.Object) bool {
 
 // CopyReferences copies all revision metadata from objA to objB except the current revision marker.
 // This is used when taking over control from a previous owner while preserving their watch references.
-func (m *NativeRevisionMetadata) CopyReferences(oldObj, newObj metav1.Object) {
+func (m *nativeRevisionMetadata) CopyReferences(oldObj, newObj metav1.Object) {
 	// Copy owner references from A to B.
 	oldOwnerRefs := slices.Clone(oldObj.GetOwnerReferences())
 	newObj.SetOwnerReferences(oldOwnerRefs)
@@ -167,7 +193,7 @@ func (m *NativeRevisionMetadata) CopyReferences(oldObj, newObj metav1.Object) {
 
 // GetCurrent returns a RevisionReference describing the current revision of obj.
 // Returns nil if there is no current revision set.
-func (m *NativeRevisionMetadata) GetCurrent(obj metav1.Object) types.RevisionReference {
+func (m *nativeRevisionMetadata) GetCurrent(obj metav1.Object) types.RevisionReference {
 	for _, ref := range obj.GetOwnerReferences() {
 		if ref.Controller != nil && *ref.Controller {
 			// Return a copy to avoid mutation.
@@ -197,7 +223,7 @@ func nativeOwnerRefForCompare(obj client.Object, scheme *runtime.Scheme) metav1.
 	return ref
 }
 
-func (m *NativeRevisionMetadata) referSameObject(a, b metav1.OwnerReference) bool {
+func (m *nativeRevisionMetadata) referSameObject(a, b metav1.OwnerReference) bool {
 	aGV, err := schema.ParseGroupVersion(a.APIVersion)
 	if err != nil {
 		panic(err)
@@ -211,17 +237,15 @@ func (m *NativeRevisionMetadata) referSameObject(a, b metav1.OwnerReference) boo
 	return aGV.Group == bGV.Group && a.Kind == b.Kind && a.Name == b.Name && a.UID == b.UID
 }
 
-// NativeEnqueueRequestForOwner returns an EventHandler that enqueues reconcile requests
+// EnqueueRequestForOwner returns an EventHandler that enqueues reconcile requests
 // for the owner of the object that triggered the event.
-func NativeEnqueueRequestForOwner(
-	scheme *runtime.Scheme,
-	mapper meta.RESTMapper,
+func (s *NativeStrategy) EnqueueRequestForOwner(
 	ownerType client.Object,
 	isController bool,
 ) handler.EventHandler {
 	if isController {
-		return handler.EnqueueRequestForOwner(scheme, mapper, ownerType, handler.OnlyControllerOwner())
+		return handler.EnqueueRequestForOwner(s.scheme, s.mapper, ownerType, handler.OnlyControllerOwner())
 	}
 
-	return handler.EnqueueRequestForOwner(scheme, mapper, ownerType)
+	return handler.EnqueueRequestForOwner(s.scheme, s.mapper, ownerType)
 }

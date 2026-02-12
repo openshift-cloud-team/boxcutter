@@ -3,6 +3,7 @@ package machinery
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"k8s.io/client-go/kubernetes/scheme"
 
@@ -325,6 +326,8 @@ func reportStart(or ObjectResult) string {
 		msg += "Probes:\n"
 	}
 
+	var msgSb329 strings.Builder
+
 	for _, probeType := range probeTypes {
 		probeRes := probes[probeType]
 		switch probeRes.Status {
@@ -336,10 +339,15 @@ func reportStart(or ObjectResult) string {
 			msg += fmt.Sprintf("- %s: Unknown\n", probeType)
 		}
 
+		var msgSb339 strings.Builder
 		for _, m := range probeRes.Messages {
-			msg += "  - " + m + "\n"
+			msgSb339.WriteString("  - " + m + "\n")
 		}
+
+		msgSb329.WriteString(msgSb339.String())
 	}
+
+	msg += msgSb329.String()
 
 	return msg
 }

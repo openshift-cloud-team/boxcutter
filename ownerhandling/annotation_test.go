@@ -43,8 +43,8 @@ func TestAnnotationRevisionMetadata_RemoveFrom(t *testing.T) {
 		},
 	}
 
-	h := NewAnnotationStrategy(testAnnotationKey)
-	m := h.NewRevisionMetadata(owner, testScheme)
+	h := NewAnnotation(testAnnotationKey, testScheme)
+	m := h.NewRevisionMetadata(owner)
 	m.RemoveFrom(obj)
 
 	assert.Equal(t, `[]`, obj.Annotations[testAnnotationKey])
@@ -62,8 +62,8 @@ func TestAnnotationRevisionMetadata_SetCurrent(t *testing.T) {
 	}
 	obj := &corev1.Secret{}
 
-	h := NewAnnotationStrategy(testAnnotationKey)
-	m := h.NewRevisionMetadata(cm1, testScheme)
+	h := NewAnnotation(testAnnotationKey, testScheme)
+	m := h.NewRevisionMetadata(cm1)
 	err := m.SetCurrent(obj)
 	require.NoError(t, err)
 
@@ -80,7 +80,7 @@ func TestAnnotationRevisionMetadata_SetCurrent(t *testing.T) {
 		},
 	}
 
-	m2 := h.NewRevisionMetadata(cm2, testScheme)
+	m2 := h.NewRevisionMetadata(cm2)
 	err = m2.SetCurrent(obj)
 	require.Error(t, err)
 
@@ -180,9 +180,9 @@ func TestAnnotationEnqueueOwnerHandler_GetOwnerReconcileRequest(t *testing.T) {
 		},
 	}
 
-	h := NewAnnotationStrategy(testAnnotationKey)
-	revisionMetadata := h.NewRevisionMetadata(owner, testScheme)
-	newRevisionMetadata := h.NewRevisionMetadata(newOwner, testScheme)
+	h := NewAnnotation(testAnnotationKey, testScheme)
+	revisionMetadata := h.NewRevisionMetadata(owner)
+	newRevisionMetadata := h.NewRevisionMetadata(newOwner)
 
 	for i := range tests {
 		test := tests[i]
@@ -202,7 +202,7 @@ func TestAnnotationEnqueueOwnerHandler_GetOwnerReconcileRequest(t *testing.T) {
 				newRevisionMetadata.RemoveFrom(obj)
 			}
 
-			enqueue := h.EnqueueRequestForOwner(testScheme, test.ownerType, test.isController).(*annotationEnqueueRequestForOwner)
+			enqueue := h.EnqueueRequestForOwner(test.ownerType, test.isController).(*annotationEnqueueRequestForOwner)
 			req := enqueue.getOwnerReconcileRequest(obj)
 
 			if test.requestExpected {
@@ -253,8 +253,8 @@ func TestAnnotationRevisionMetadata_IsCurrent(t *testing.T) {
 		},
 	}
 
-	h := NewAnnotationStrategy(testAnnotationKey)
-	m1 := h.NewRevisionMetadata(cm1, testScheme)
+	h := NewAnnotation(testAnnotationKey, testScheme)
+	m1 := h.NewRevisionMetadata(cm1)
 	err := m1.SetCurrent(obj)
 	require.NoError(t, err)
 
@@ -265,7 +265,7 @@ func TestAnnotationRevisionMetadata_IsCurrent(t *testing.T) {
 			UID:       types.UID("56789"),
 		},
 	}
-	m2 := h.NewRevisionMetadata(cm2, testScheme)
+	m2 := h.NewRevisionMetadata(cm2)
 
 	assert.True(t, m1.IsCurrent(obj))
 	assert.False(t, m2.IsCurrent(obj))
@@ -325,8 +325,8 @@ func TestAnnotationRevisionMetadata_GetCurrent(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := NewAnnotationStrategy(testAnnotationKey)
-			m := h.NewRevisionMetadata(dummyOwner, testScheme)
+			h := NewAnnotation(testAnnotationKey, testScheme)
+			m := h.NewRevisionMetadata(dummyOwner)
 
 			obj := &corev1.Secret{}
 			if tc.annotation != "" {
@@ -356,8 +356,8 @@ func TestAnnotationRevisionMetadata_CopyReferences(t *testing.T) {
 			UID:  types.UID("dummy-uid"),
 		},
 	}
-	h := NewAnnotationStrategy(testAnnotationKey)
-	m := h.NewRevisionMetadata(dummyOwner, testScheme).(*annotationRevisionMetadata)
+	h := NewAnnotation(testAnnotationKey, testScheme)
+	m := h.NewRevisionMetadata(dummyOwner).(*annotationRevisionMetadata)
 
 	objA := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -460,8 +460,8 @@ func TestAnnotationRevisionMetadata_GetOwnerReferencesEdgeCases(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 
-			h := NewAnnotationStrategy(testAnnotationKey)
-			m := h.NewRevisionMetadata(dummyOwner, testScheme)
+			h := NewAnnotation(testAnnotationKey, testScheme)
+			m := h.NewRevisionMetadata(dummyOwner)
 
 			controller := m.GetCurrent(tc.obj)
 			if tc.expectedNilRef {
@@ -547,8 +547,8 @@ func TestAnnotationRevisionMetadata_ReferSameObjectEdgeCases(t *testing.T) {
 				},
 			}
 
-			h := NewAnnotationStrategy(testAnnotationKey)
-			m := h.NewRevisionMetadata(owner, testScheme)
+			h := NewAnnotation(testAnnotationKey, testScheme)
+			m := h.NewRevisionMetadata(owner)
 			result := m.IsCurrent(obj)
 			assert.Equal(t, tc.expectedMatch, result)
 		})
@@ -572,8 +572,8 @@ func TestAnnotationRevisionMetadata_RemoveFromNotFound(t *testing.T) {
 		},
 	}
 
-	h := NewAnnotationStrategy(testAnnotationKey)
-	m := h.NewRevisionMetadata(owner, testScheme)
+	h := NewAnnotation(testAnnotationKey, testScheme)
+	m := h.NewRevisionMetadata(owner)
 	initialAnnotation := obj.Annotations[testAnnotationKey]
 	m.RemoveFrom(obj)
 	finalAnnotation := obj.Annotations[testAnnotationKey]
@@ -682,8 +682,8 @@ func TestAnnotationRevisionMetadata_IsNamespaceAllowed(t *testing.T) {
 				},
 			}
 
-			h := NewAnnotationStrategy(testAnnotationKey)
-			m := h.NewRevisionMetadata(owner, testScheme)
+			h := NewAnnotation(testAnnotationKey, testScheme)
+			m := h.NewRevisionMetadata(owner)
 			// Annotation-based ownership always allows cross-namespace
 			assert.True(t, m.IsNamespaceAllowed(obj))
 		})
@@ -702,7 +702,7 @@ func TestAnnotationRevisionMetadata_PanicsOnEmptyUID(t *testing.T) {
 	}
 
 	assert.Panics(t, func() {
-		h := NewAnnotationStrategy(testAnnotationKey)
-		_ = h.NewRevisionMetadata(owner, testScheme)
+		h := NewAnnotation(testAnnotationKey, testScheme)
+		_ = h.NewRevisionMetadata(owner)
 	})
 }

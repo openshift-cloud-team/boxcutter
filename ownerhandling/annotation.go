@@ -26,16 +26,36 @@ import (
 // annotation key to store owner references, and an event handler that enqueues
 // reconcile requests for the object referenced by the annotation. The
 // AnnotationStrategy itself specifies the annotation key to use.
-type AnnotationStrategy string
-
-// NewAnnotationStrategy creates an AnnotationStrategy which uses the given
-// annotation key.
-func NewAnnotationStrategy(annotationKey string) AnnotationStrategy {
-	return AnnotationStrategy(annotationKey)
+type AnnotationStrategy struct {
+	key    string
+	scheme *runtime.Scheme
 }
 
-// Ensure AnnotationRevisionMetadata implements RevisionMetadata.
-var _ bctypes.RevisionMetadata = (*annotationRevisionMetadata)(nil)
+// NewAnnotation creates a MetadataStrategy using annotations.
+func NewAnnotation(annotationKey string, scheme *runtime.Scheme) *AnnotationStrategy {
+	return &AnnotationStrategy{
+		key:    annotationKey,
+		scheme: scheme,
+	}
+}
+
+// NewRevisionMetadata creates a RevisionMetadata using annotation-based ownership.
+// IsNamespaceAllowed() always returns true since cross-namespace support is the primary
+// purpose of annotation-based ownership.
+// Panics if owner has an empty UID (not persisted to cluster).
+func (h *AnnotationStrategy) NewRevisionMetadata(
+	owner client.Object,
+) bctypes.RevisionMetadata {
+	return NewAnnotationRevisionMetadata(owner, h.scheme, h.key)
+}
+
+var (
+	// Ensure AnnotationRevisionMetadata implements RevisionMetadata.
+	_ bctypes.RevisionMetadata = (*annotationRevisionMetadata)(nil)
+
+	// Ensure AnnotationStrategy implements MetadataStrategy.
+	_ bctypes.MetadataStrategy = (*AnnotationStrategy)(nil)
+)
 
 // annotationRevisionMetadata uses annotations for cross-namespace ownership tracking.
 // Cross-namespace is always allowed (this is the primary purpose of annotation-based ownership).
@@ -45,13 +65,13 @@ type annotationRevisionMetadata struct {
 	annotationKey string
 }
 
-// NewRevisionMetadata creates a RevisionMetadata using annotation-based ownership.
+// NewAnnotationRevisionMetadata creates a RevisionMetadata using annotation-based ownership.
 // IsNamespaceAllowed() always returns true since cross-namespace support is the primary
 // purpose of annotation-based ownership.
 // Panics if owner has an empty UID (not persisted to cluster).
-func (h AnnotationStrategy) NewRevisionMetadata(
-	owner client.Object,
-	scheme *runtime.Scheme,
+func NewAnnotationRevisionMetadata(
+	owner client.Object, scheme *runtime.Scheme,
+	annotationKey string,
 ) bctypes.RevisionMetadata {
 	if len(owner.GetUID()) == 0 {
 		panic("owner must be persisted to cluster, empty UID")
@@ -60,7 +80,7 @@ func (h AnnotationStrategy) NewRevisionMetadata(
 	return &annotationRevisionMetadata{
 		owner:         owner,
 		scheme:        scheme,
-		annotationKey: string(h),
+		annotationKey: annotationKey,
 	}
 }
 
@@ -76,6 +96,11 @@ func (m *annotationRevisionMetadata) GetReconcileOptions() []bctypes.RevisionRec
 // For annotation-based ownership, there are no default teardown options.
 func (m *annotationRevisionMetadata) GetTeardownOptions() []bctypes.RevisionTeardownOption {
 	return nil
+}
+
+// GetOwner returns the owner object used to create this metadata.
+func (m *annotationRevisionMetadata) GetOwner() client.Object {
+	return m.owner
 }
 
 // SetCurrent updates obj to mark this RevisionMetadata as the current (controlling) revision.
@@ -294,17 +319,16 @@ func (r *annotationOwnerRef) isController() bool {
 
 // EnqueueRequestForOwner returns an EventHandler that enqueues reconcile requests
 // for the owner of the object that triggered the event, using annotation-based owner references.
-func (h AnnotationStrategy) EnqueueRequestForOwner(
-	scheme *runtime.Scheme,
+func (h *AnnotationStrategy) EnqueueRequestForOwner(
 	ownerType client.Object,
 	isController bool,
 ) handler.EventHandler {
 	e := &annotationEnqueueRequestForOwner{
 		ownerType:     ownerType,
 		isController:  isController,
-		annotationKey: string(h),
+		annotationKey: h.key,
 	}
-	if err := e.parseOwnerTypeGroupKind(scheme); err != nil {
+	if err := e.parseOwnerTypeGroupKind(h.scheme); err != nil {
 		panic(err)
 	}
 

@@ -2,6 +2,7 @@ package types
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // mockRevisionMetadata is a test mock for RevisionMetadata.
@@ -18,5 +19,6 @@ func (m *mockRevisionMetadata) RemoveFrom(metav1.Object)                        
 func (m *mockRevisionMetadata) IsNamespaceAllowed(metav1.Object) bool               { return true }
 func (m *mockRevisionMetadata) CopyReferences(metav1.Object, metav1.Object)         {}
 func (m *mockRevisionMetadata) GetCurrent(metav1.Object) RevisionReference          { return nil }
+func (m *mockRevisionMetadata) GetOwner() client.Object                             { return nil }
 
 var _ RevisionMetadata = &mockRevisionMetadata{}

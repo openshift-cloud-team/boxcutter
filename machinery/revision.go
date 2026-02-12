@@ -150,26 +150,39 @@ func (r *revisionResult) String() string {
 
 	if err := r.GetValidationError(); err != nil {
 		out += "Validation Errors:\n"
+
+		var outSb153 strings.Builder
 		for _, err := range err.Unwrap() {
-			out += "- " + err.Error() + "\n"
+			outSb153.WriteString("- " + err.Error() + "\n")
 		}
+
+		out += outSb153.String()
 	}
 
 	phasesWithResults := map[string]struct{}{}
 	out += "Phases:\n"
 
+	var outSb161 strings.Builder
+
 	for _, ores := range r.phasesResults {
 		phasesWithResults[ores.GetName()] = struct{}{}
-		out += "- " + strings.TrimSpace(strings.ReplaceAll(ores.String(), "\n", "\n  ")) + "\n"
+
+		outSb161.WriteString("- " + strings.TrimSpace(strings.ReplaceAll(ores.String(), "\n", "\n  ")) + "\n")
 	}
+
+	out += outSb161.String()
+
+	var outSb166 strings.Builder
 
 	for _, p := range r.phases {
 		if _, ok := phasesWithResults[p]; ok {
 			continue
 		}
 
-		out += fmt.Sprintf("- Phase %q (Pending)\n", p)
+		outSb166.WriteString(fmt.Sprintf("- Phase %q (Pending)\n", p))
 	}
+
+	out += outSb166.String()
 
 	return out
 }
@@ -286,25 +299,38 @@ func (r *revisionTeardownResult) String() string {
 
 	if len(r.waiting) > 0 {
 		out += "Waiting Phases:\n"
+
+		var outSb289 strings.Builder
 		for _, waiting := range r.waiting {
-			out += "- " + waiting + "\n"
+			outSb289.WriteString("- " + waiting + "\n")
 		}
+
+		out += outSb289.String()
 	}
 
 	if len(r.gone) > 0 {
 		out += "Gone Phases:\n"
+
+		var outSb296 strings.Builder
 		for _, gone := range r.gone {
-			out += "- " + gone + "\n"
+			outSb296.WriteString("- " + gone + "\n")
 		}
+
+		out += outSb296.String()
 	}
 
 	phasesWithResults := map[string]struct{}{}
 	out += "Phases:\n"
 
+	var outSb304 strings.Builder
+
 	for _, ores := range r.phases {
 		phasesWithResults[ores.GetName()] = struct{}{}
-		out += "- " + strings.TrimSpace(strings.ReplaceAll(ores.String(), "\n", "\n  ")) + "\n"
+
+		outSb304.WriteString("- " + strings.TrimSpace(strings.ReplaceAll(ores.String(), "\n", "\n  ")) + "\n")
 	}
+
+	out += outSb304.String()
 
 	return out
 }

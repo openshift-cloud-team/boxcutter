@@ -90,16 +90,24 @@ func (r *phaseTeardownResult) String() string {
 
 	if len(r.gone) > 0 {
 		out += "Gone Objects:\n"
+
+		var outSb93 strings.Builder
 		for _, gone := range r.gone {
-			out += "- " + gone.String() + "\n"
+			outSb93.WriteString("- " + gone.String() + "\n")
 		}
+
+		out += outSb93.String()
 	}
 
 	if len(r.waiting) > 0 {
 		out += "Waiting Objects:\n"
+
+		var outSb100 strings.Builder
 		for _, waiting := range r.waiting {
-			out += "- " + waiting.String() + "\n"
+			outSb100.WriteString("- " + waiting.String() + "\n")
 		}
+
+		out += outSb100.String()
 	}
 
 	return out
@@ -312,15 +320,23 @@ func (r *phaseResult) String() string {
 
 	if err := r.GetValidationError(); err != nil {
 		out += "Validation Errors:\n"
+
+		var outSb315 strings.Builder
 		for _, err := range err.Unwrap() {
-			out += "- " + err.Error() + "\n"
+			outSb315.WriteString("- " + err.Error() + "\n")
 		}
+
+		out += outSb315.String()
 	}
 
 	out += "Objects:\n"
+
+	var outSb321 strings.Builder
 	for _, ores := range r.objects {
-		out += "- " + strings.ReplaceAll(strings.TrimSpace(ores.String()), "\n", "\n  ") + "\n"
+		outSb321.WriteString("- " + strings.ReplaceAll(strings.TrimSpace(ores.String()), "\n", "\n  ") + "\n")
 	}
+
+	out += outSb321.String()
 
 	return out
 }

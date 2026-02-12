@@ -25,6 +25,41 @@ type mockRestMapper struct {
 	mock.Mock
 }
 
+// KindFor takes a partial resource and returns the single match.  Returns an error if there are multiple matches.
+func (m *mockRestMapper) KindFor(resource schema.GroupVersionResource) (schema.GroupVersionKind, error) {
+	args := m.Called(resource)
+
+	return args.Get(0).(schema.GroupVersionKind), args.Error(1)
+}
+
+// KindsFor takes a partial resource and returns the list of potential kinds in priority order.
+func (m *mockRestMapper) KindsFor(resource schema.GroupVersionResource) ([]schema.GroupVersionKind, error) {
+	args := m.Called(resource)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).([]schema.GroupVersionKind), args.Error(1)
+}
+
+// ResourceFor takes a partial resource and returns the single match.  Returns an error if there are multiple matches.
+func (m *mockRestMapper) ResourceFor(input schema.GroupVersionResource) (schema.GroupVersionResource, error) {
+	args := m.Called(input)
+
+	return args.Get(0).(schema.GroupVersionResource), args.Error(1)
+}
+
+// ResourcesFor takes a partial resource and returns the list of potential resource in priority order.
+func (m *mockRestMapper) ResourcesFor(input schema.GroupVersionResource) ([]schema.GroupVersionResource, error) {
+	args := m.Called(input)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).([]schema.GroupVersionResource), args.Error(1)
+}
+
+// RESTMapping identifies a preferred resource mapping for the provided group kind.
 func (m *mockRestMapper) RESTMapping(gk schema.GroupKind, versions ...string) (*meta.RESTMapping, error) {
 	args := m.Called(gk, versions)
 	if args.Get(0) == nil {
@@ -32,6 +67,24 @@ func (m *mockRestMapper) RESTMapping(gk schema.GroupKind, versions ...string) (*
 	}
 
 	return args.Get(0).(*meta.RESTMapping), args.Error(1)
+}
+
+// RESTMappings returns all resource mappings for the provided group kind if no
+// version search is provided. Otherwise identifies a preferred resource mapping for
+// the provided version(s).
+func (m *mockRestMapper) RESTMappings(gk schema.GroupKind, versions ...string) ([]*meta.RESTMapping, error) {
+	args := m.Called(gk, versions)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+
+	return args.Get(0).([]*meta.RESTMapping), args.Error(1)
+}
+
+func (m *mockRestMapper) ResourceSingularizer(resource string) (singular string, err error) {
+	args := m.Called(resource)
+
+	return args.String(0), args.Error(1)
 }
 
 type mockWriter struct {
@@ -209,7 +262,7 @@ func TestObjectValidator_Validate(t *testing.T) {
 			validator := NewObjectValidator(restMapper, writer)
 
 			owner := testOwner(test.ownerNamespace)
-			metadata := ownerhandling.NewNativeRevisionMetadata(owner, scheme)
+			metadata := ownerhandling.NewNative(scheme, restMapper).NewRevisionMetadata(owner)
 
 			err := validator.Validate(t.Context(), metadata, test.obj)
 
