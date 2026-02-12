@@ -424,6 +424,7 @@ func TestObjectEngine(t *testing.T) {
 						*obj = *actualObject
 					}).
 					Return(nil)
+
 				fs := &fieldpath.Set{}
 				fs.Insert(fieldpath.MakePathOrDie("spec", "banana"))
 				ddm.
@@ -524,6 +525,7 @@ func TestObjectEngine(t *testing.T) {
 						*obj = *actualObject
 					}).
 					Return(nil)
+
 				fs := &fieldpath.Set{}
 				fs.Insert(fieldpath.MakePathOrDie("spec", "banana"))
 				ddm.
@@ -622,6 +624,7 @@ func TestObjectEngine(t *testing.T) {
 						*obj = *actualObject
 					}).
 					Return(nil)
+
 				fs := &fieldpath.Set{}
 				fs.Insert(fieldpath.MakePathOrDie("spec", "banana"))
 				ddm.
@@ -715,6 +718,7 @@ func TestObjectEngine(t *testing.T) {
 						*obj = *actualObject
 					}).
 					Return(nil)
+
 				fs := &fieldpath.Set{}
 				fs.Insert(fieldpath.MakePathOrDie("spec", "banana"))
 				ddm.
@@ -806,6 +810,7 @@ func TestObjectEngine(t *testing.T) {
 						*obj = *actualObject
 					}).
 					Return(nil)
+
 				fs := &fieldpath.Set{}
 				fs.Insert(fieldpath.MakePathOrDie("spec", "banana"))
 				ddm.
@@ -851,7 +856,6 @@ func TestObjectEngine(t *testing.T) {
 
 			test.mockSetup(cache, writer, divergeDetector)
 
-			//nolint:usetesting
 			ctx := context.Background()
 			ownerMeta := ownerhandling.NewNativeRevisionMetadata(owner, scheme.Scheme)
 			res, err := oe.Reconcile(
@@ -986,7 +990,6 @@ func TestObjectEngine_Reconcile_UnsupportedTypedObject(t *testing.T) {
 				},
 			}, nil)
 
-		//nolint:usetesting
 		ctx := context.Background()
 		res, err := oe.Reconcile(ctx, revisionMetadata, 1, desiredObject)
 
@@ -1419,5 +1422,6 @@ func (m *mockRevisionMetadata) RemoveFrom(_ metav1.Object)                      
 func (m *mockRevisionMetadata) IsNamespaceAllowed(_ metav1.Object) bool            { return true }
 func (m *mockRevisionMetadata) CopyReferences(_, _ metav1.Object)                  {}
 func (m *mockRevisionMetadata) GetCurrent(_ metav1.Object) types.RevisionReference { return nil }
+func (m *mockRevisionMetadata) GetOwner() client.Object                            { return nil }
 
 var _ types.RevisionMetadata = &mockRevisionMetadata{}

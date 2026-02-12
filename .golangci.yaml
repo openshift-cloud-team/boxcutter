@@ -91,7 +91,6 @@ linters:
     - protogetter
     - reassign
     - recvcheck
-    - revive
     - rowserrcheck
     - sloglint
     - spancheck
@@ -110,7 +109,7 @@ linters:
     - usetesting
     - wastedassign
     - whitespace
-    - wsl
+    - wsl_v5
     - zerologlint
   settings:
     gosec:

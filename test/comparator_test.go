@@ -46,7 +46,6 @@ func TestComparator(t *testing.T) {
 	}
 	require.NoError(t, Client.Create(t.Context(), owner, client.FieldOwner(fieldOwner)))
 	t.Cleanup(func() {
-		//nolint:usetesting
 		if err := Client.Delete(context.Background(), owner); err != nil {
 			t.Error(err)
 		}

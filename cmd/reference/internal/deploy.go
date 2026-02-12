@@ -28,7 +28,6 @@ import (
 
 	"pkg.package-operator.run/boxcutter"
 	"pkg.package-operator.run/boxcutter/managedcache"
-	"pkg.package-operator.run/boxcutter/ownerhandling"
 	"pkg.package-operator.run/boxcutter/probing"
 	"pkg.package-operator.run/boxcutter/util"
 )
@@ -49,8 +48,9 @@ type Reconciler struct {
 	discoveryClient *discovery.DiscoveryClient
 	restMapper      meta.RESTMapper
 
-	cache  managedcache.ObjectBoundAccessManager[*corev1.ConfigMap]
-	scheme *runtime.Scheme
+	cache            managedcache.ObjectBoundAccessManager[*corev1.ConfigMap]
+	scheme           *runtime.Scheme
+	metadataStrategy boxcutter.MetadataStrategy
 }
 
 func NewReconciler(
@@ -61,11 +61,12 @@ func NewReconciler(
 	scheme *runtime.Scheme,
 ) *Reconciler {
 	return &Reconciler{
-		client:          client,
-		discoveryClient: discoveryClient,
-		restMapper:      restMapper,
-		cache:           cache,
-		scheme:          scheme,
+		client:           client,
+		discoveryClient:  discoveryClient,
+		restMapper:       restMapper,
+		cache:            cache,
+		scheme:           scheme,
+		metadataStrategy: boxcutter.NewNativeMetadataStrategy(scheme, restMapper),
 	}
 }
 
@@ -402,13 +403,13 @@ func (c *Reconciler) toRevision(deployName string, cm *corev1.ConfigMap) (
 
 	rev := &boxcutter.Revision{
 		Name:     cm.Name,
-		Metadata: ownerhandling.NewNativeRevisionMetadata(cm, c.scheme),
+		Metadata: c.metadataStrategy.NewRevisionMetadata(cm),
 		Revision: revision,
 	}
 
 	previousMetadata := make([]boxcutter.RevisionMetadata, len(previousUnstr))
 	for i := range previousUnstr {
-		previousMetadata[i] = ownerhandling.NewNativeRevisionMetadata(&previousUnstr[i], c.scheme)
+		previousMetadata[i] = c.metadataStrategy.NewRevisionMetadata(&previousUnstr[i])
 		previous = append(previous, &previousUnstr[i])
 	}
 
@@ -430,10 +431,12 @@ func (c *Reconciler) toRevision(deployName string, cm *corev1.ConfigMap) (
 				if obj.GetObjectKind().GroupVersionKind().Kind != "ConfigMap" || !ok {
 					return probing.TrueResult()
 				}
+
 				f, ok, _ := unstructured.NestedString(u.Object, "data", "continue")
 				if !ok {
 					return probing.FalseResult(".data.continue not set")
 				}
+
 				if f != "yes" {
 					return probing.FalseResult(`.data.continue not set to "yes"`)
 				}

@@ -9,6 +9,7 @@ import (
 
 	"pkg.package-operator.run/boxcutter/machinery"
 	"pkg.package-operator.run/boxcutter/machinery/types"
+	"pkg.package-operator.run/boxcutter/ownerhandling"
 	"pkg.package-operator.run/boxcutter/validation"
 )
 
@@ -90,8 +91,29 @@ const ProgressProbeType = types.ProgressProbeType
 // RevisionEngine manages rollout and teardown of multiple phases.
 type RevisionEngine = machinery.RevisionEngine
 
+// MetadataStrategy is a swappable interface to implement different
+// ways to interact with object metadata.
+// See Native and Annotation based implementations as reference.
+type MetadataStrategy = types.MetadataStrategy
+
+// NewAnnotationMetadataStrategy creates a MetadataStrategy using annotations.
+var NewAnnotationMetadataStrategy = ownerhandling.NewAnnotation
+
+// NewNativeMetadataStrategy creates new MetadataStrategy using kubernetes native mechanisms.
+var NewNativeMetadataStrategy = ownerhandling.NewNative
+
 // RevisionMetadata is the interface for managing ownership metadata.
 type RevisionMetadata = types.RevisionMetadata
+
+// NewAnnotaionRevisionMetadata creates a RevisionMetadata using annotation-based ownership.
+// IsNamespaceAllowed() always returns true since cross-namespace support is the primary
+// purpose of annotation-based ownership.
+// Panics if owner has an empty UID (not persisted to cluster).
+var NewAnnotationRevisionMetadata = ownerhandling.NewAnnotationRevisionMetadata
+
+// NewNativeRevisionMetadata creates a RevisionMetadata using native ownerReferences.
+// Panics if owner has an empty UID (not persisted to cluster).
+var NewNativeRevisionMetadata = ownerhandling.NewNativeRevisionMetadata
 
 // RevisionReference is the interface for revision reference information.
 type RevisionReference = types.RevisionReference

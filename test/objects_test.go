@@ -37,7 +37,6 @@ func TestObjectEngine(t *testing.T) {
 	}
 	require.NoError(t, Client.Create(ctx, owner, client.FieldOwner(fieldOwner)))
 	t.Cleanup(func() {
-		//nolint:usetesting
 		if err := Client.Delete(context.Background(), owner); err != nil {
 			t.Error(err)
 		}
@@ -164,7 +163,6 @@ func TestObjectEnginePaused(t *testing.T) {
 	}
 	require.NoError(t, Client.Create(ctx, owner, client.FieldOwner(fieldOwner)))
 	t.Cleanup(func() {
-		//nolint:usetesting
 		if err := Client.Delete(context.Background(), owner); err != nil {
 			t.Error(err)
 		}
@@ -286,7 +284,6 @@ func TestObjectEngineProbing(t *testing.T) {
 	}
 	require.NoError(t, Client.Create(ctx, owner, client.FieldOwner(fieldOwner)))
 	t.Cleanup(func() {
-		//nolint:usetesting
 		if err := Client.Delete(context.Background(), owner); err != nil {
 			t.Error(err)
 		}

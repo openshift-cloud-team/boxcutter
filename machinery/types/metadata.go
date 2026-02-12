@@ -2,7 +2,23 @@ package types
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 )
+
+// MetadataStrategy is a swappable interface to implement different
+// ways to interact with object metadata.
+// See Native and Annotation based implementations as reference.
+type MetadataStrategy interface {
+	NewRevisionMetadata(
+		owner client.Object,
+	) RevisionMetadata
+
+	EnqueueRequestForOwner(
+		ownerType client.Object,
+		isController bool,
+	) handler.EventHandler
+}
 
 // RevisionMetadata manages revision ownership metadata of objects.
 // Implementations may store ownership information in various ways
@@ -15,6 +31,9 @@ type RevisionMetadata interface {
 	// GetTeardownOptions returns a set of options that will added to any
 	// revision teardown options.
 	GetTeardownOptions() []RevisionTeardownOption
+
+	// GetOwner returns the owner object used to create this metadata.
+	GetOwner() client.Object
 
 	// SetCurrent updates obj to mark this RevisionMetadata as the current (controlling) revision.
 	// Returns an error if the object already has a different current revision.

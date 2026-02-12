@@ -136,7 +136,7 @@ func checkForObjectDuplicates(phases ...types.Phase) []ObjectValidationError {
 	ovs := make([]ObjectValidationError, 0, len(conflicts))
 
 	for objRef, phasesMap := range conflicts {
-		var phases []string
+		phases := make([]string, 0, len(phasesMap))
 		for p := range phasesMap {
 			phases = append(phases, p)
 		}

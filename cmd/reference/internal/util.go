@@ -9,7 +9,6 @@ import (
 
 	"pkg.package-operator.run/boxcutter"
 	bctypes "pkg.package-operator.run/boxcutter/machinery/types"
-	"pkg.package-operator.run/boxcutter/ownerhandling"
 )
 
 type revisionAscending []bctypes.Revision
@@ -32,8 +31,7 @@ func latestRevisionNumber(prevRevisions []bctypes.Revision) int64 {
 }
 
 func getNativeOwner(revision boxcutter.Revision) client.Object {
-	// NOTE: Will panic if not a NativeRevisionMetadata
-	return revision.Metadata.(*ownerhandling.NativeRevisionMetadata).GetOwner()
+	return revision.Metadata.GetOwner()
 }
 
 func prevJSON(prevRevisions []bctypes.Revision) string {
